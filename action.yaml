@@ -1,15 +1,25 @@
-name: typescript-action
-description: Template of TypeScript Action
+name: setup-nucel
+description: Set up Nucel CLI for GitHub Actions
 
 inputs:
-  name:
-    description: Example
-    required: true
+  version:
+    description: Version of Nucel CLI to install (e.g., '1.0.0' or 'latest')
+    required: false
+    default: 'latest'
   token:
-    description: GitHub token
-    required: true
-    default: ${{ github.token }}
+    description: Authentication token for Nucel CLI (if required)
+    required: false
+  install-path:
+    description: Custom installation path for Nucel CLI (optional)
+    required: false
+
+outputs:
+  cli-version:
+    description: Installed Nucel CLI version
+  cli-path:
+    description: Path to installed Nucel CLI executable
 
 runs:
-  using: 'node20'
+  using: 'node22'
   main: 'dist/index.js'
+  post: 'dist/index.js'
