@@ -1,18 +1,18 @@
 # setup-nucel
 
-[![CI](https://github.com/your-org/setup-nucel/actions/workflows/ci.yml/badge.svg)](https://github.com/your-org/setup-nucel/actions/workflows/ci.yml)
-[![Release](https://github.com/your-org/setup-nucel/actions/workflows/release.yml/badge.svg)](https://github.com/your-org/setup-nucel/actions/workflows/release.yml)
+[![CI](https://github.com/nucel-cloud/setup-nucel/actions/workflows/ci.yml/badge.svg)](https://github.com/nucel-cloud/setup-nucel/actions/workflows/ci.yml)
+[![Release](https://github.com/nucel-cloud/setup-nucel/actions/workflows/release.yml/badge.svg)](https://github.com/nucel-cloud/setup-nucel/actions/workflows/release.yml)
 
 A GitHub Action to set up the Nucel CLI for use in workflows. This action installs the Nucel CLI and makes it available for subsequent steps.
 
 ## Features
 
-- 🚀 **Fast Installation**: Uses npm for quick global installation
-- 💾 **Smart Caching**: Caches installations to speed up subsequent runs
-- 🖥️ **Cross-Platform**: Supports Windows, macOS, and Linux
-- 🔐 **Secure**: Uses official Nucel CLI package with optional authentication
-- 🧹 **Clean**: Automatic cleanup of temporary files
-- 📦 **Lightweight**: Minimal dependencies and fast execution
+- Fast Installation: Uses npm for quick global installation
+- Smart Caching: Caches installations to speed up subsequent runs
+- Cross-Platform: Supports Windows, macOS, and Linux
+- Secure: Uses official Nucel CLI package with optional authentication
+- Clean: Automatic cleanup of temporary files
+- Lightweight: Minimal dependencies and fast execution
 
 ## Usage
 
@@ -20,7 +20,7 @@ A GitHub Action to set up the Nucel CLI for use in workflows. This action instal
 
 ```yaml
 - name: Set up Nucel CLI
-  uses: your-org/setup-nucel@v1
+  uses: nucel-cloud/setup-nucel@v1
   with:
     version: 'latest'
 ```
@@ -29,7 +29,7 @@ A GitHub Action to set up the Nucel CLI for use in workflows. This action instal
 
 ```yaml
 - name: Set up Nucel CLI with specific version
-  uses: your-org/setup-nucel@v1
+  uses: nucel-cloud/setup-nucel@v1
   with:
     version: '1.2.3'
     token: ${{ secrets.NUCEL_TOKEN }}
@@ -70,7 +70,7 @@ jobs:
           node-version: '20'
 
       - name: Set up Nucel CLI
-        uses: your-org/setup-nucel@v1
+        uses: nucel-cloud/setup-nucel@v1
         with:
           version: 'latest'
 
@@ -96,7 +96,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Set up Nucel CLI
-        uses: your-org/setup-nucel@v1
+        uses: nucel-cloud/setup-nucel@v1
         with:
           version: '1.2.3'
 
@@ -117,7 +117,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Set up Nucel CLI
-        uses: your-org/setup-nucel@v1
+        uses: nucel-cloud/setup-nucel@v1
         with:
           version: 'latest'
           token: ${{ secrets.NUCEL_AUTH_TOKEN }}
@@ -140,7 +140,7 @@ jobs:
 
       - name: Set up Nucel CLI
         id: setup-nucel
-        uses: your-org/setup-nucel@v1
+        uses: nucel-cloud/setup-nucel@v1
         with:
           version: 'latest'
 
@@ -193,7 +193,7 @@ The action provides clear error messages for common issues:
 ### Setup
 
 ```bash
-git clone https://github.com/your-org/setup-nucel.git
+git clone https://github.com/nucel-cloud/setup-nucel.git
 cd setup-nucel
 pnpm install
 ```
@@ -232,6 +232,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Support
 
-- 📖 [Documentation](https://docs.nucel.cloud)
-- 🐛 [Issue Tracker](https://github.com/your-org/setup-nucel/issues)
-- 💬 [Discussions](https://github.com/your-org/setup-nucel/discussions)
+- Documentation: https://docs.nucel.cloud
+- Issue Tracker: https://github.com/nucel-cloud/setup-nucel/issues
+- Discussions: https://github.com/nucel-cloud/setup-nucel/discussions
