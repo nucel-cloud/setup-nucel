@@ -20,6 +20,6 @@ outputs:
     description: Path to installed Nucel CLI executable
 
 runs:
-  using: 'node22'
+  using: 'node24'
   main: 'dist/index.js'
   post: 'dist/index.js'
