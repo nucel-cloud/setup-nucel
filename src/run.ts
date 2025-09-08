@@ -130,7 +130,7 @@ const installNucelCLI = async (inputs: Inputs, platform: PlatformInfo): Promise<
 
 const getDownloadUrl = (version: string, platform: PlatformInfo): string => {
   const baseUrl = 'https://github.com/nucel-cloud/nucel/releases/download'
-  const versionTag = version === 'latest' ? 'cli-v0.1.9' : `cli-v${version}` // Use latest known version for 'latest'
+  const versionTag = version === 'latest' ? 'v0.1.9' : `v${version}` // Use correct release tag format
   const fileName = `nucel-cli-${platform.platform}-${platform.arch}${platform.ext}`
 
   return `${baseUrl}/${versionTag}/${fileName}`
