@@ -32,10 +32,16 @@ jobs:
       - run: pnpm test
       - run: pnpm build
 
-      - name: Run int128/typescript-action
+      - name: Test setup-nucel action
         uses: ./
+        id: setup-nucel
         with:
-          name: foo
+          version: 'latest'
+
+      - name: Verify setup-nucel outputs
+        run: |
+          echo "CLI Version: ${{ steps.setup-nucel.outputs.cli-version }}"
+          echo "CLI Path: ${{ steps.setup-nucel.outputs.cli-path }}"
 
   generate:
     runs-on: ubuntu-latest
