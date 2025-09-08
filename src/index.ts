@@ -13,7 +13,6 @@ try {
     await run(
       {
         version: core.getInput('version', { required: false }) || 'latest',
-        token: core.getInput('token', { required: false }),
         installPath: core.getInput('install-path', { required: false }),
       },
       await getContext(),

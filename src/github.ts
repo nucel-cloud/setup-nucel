@@ -1,14 +1,5 @@
 import { strict as assert } from 'assert'
 import * as fs from 'fs/promises'
-import { WebhookEvent } from '@octokit/webhooks-types'
-
-export const getOctokit = () => ({
-  rest: {
-    repos: {
-      listPullRequestsAssociatedWithCommit: async () => ({ data: [] })
-    }
-  }
-})
 
 export type Context = {
   repo: {
@@ -16,14 +7,14 @@ export type Context = {
     repo: string
   }
   sha: string
-  payload: WebhookEvent
+  payload: any
 }
 
 export const getContext = async (): Promise<Context> => {
   return {
     repo: getRepo(),
     sha: getEnv('GITHUB_SHA'),
-    payload: JSON.parse(await fs.readFile(getEnv('GITHUB_EVENT_PATH'), 'utf-8')) as WebhookEvent,
+    payload: JSON.parse(await fs.readFile(getEnv('GITHUB_EVENT_PATH'), 'utf-8')),
   }
 }
 

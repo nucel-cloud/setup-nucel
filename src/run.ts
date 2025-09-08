@@ -1,8 +1,11 @@
 import * as core from '@actions/core'
+import { addPath } from '@actions/core'
 import * as exec from '@actions/exec'
 import * as cache from '@actions/cache'
+import * as tc from '@actions/tool-cache'
 import * as fs from 'fs/promises'
 import * as path from 'path'
+import * as os from 'os'
 import { Context } from './github.js'
 
 type Inputs = {
@@ -12,11 +15,10 @@ type Inputs = {
 }
 
 type PlatformInfo = {
-  platform: string
-  arch: string
-  isWindows: boolean
-  isMacOS: boolean
-  isLinux: boolean
+  platform: 'linux' | 'darwin' | 'win32'
+  arch: 'x64' | 'arm64'
+  ext: string
+  binaryName: string
 }
 
 export const run = async (inputs: Inputs, context: Context): Promise<void> => {
@@ -31,7 +33,7 @@ export const run = async (inputs: Inputs, context: Context): Promise<void> => {
   const platform = getPlatformInfo()
   const cacheKey = `nucel-cli-${inputs.version}-${platform.platform}-${platform.arch}`
 
-  core.info(`Setting up Nucel CLI ${inputs.version} on ${platform.platform}`)
+  core.info(`Setting up Nucel CLI ${inputs.version} on ${platform.platform}-${platform.arch}`)
 
   const cacheHit = await restoreFromCache(cacheKey)
   if (cacheHit) {
@@ -48,15 +50,19 @@ export const run = async (inputs: Inputs, context: Context): Promise<void> => {
 }
 
 const getPlatformInfo = (): PlatformInfo => {
-  const platform = process.platform
-  const arch = process.arch
+  const platform = process.platform as 'linux' | 'darwin' | 'win32'
+  const arch = process.arch as 'x64' | 'arm64'
+
+  const platformMap = {
+    linux: { ext: '.tar.gz', binaryName: 'nucel' },
+    darwin: { ext: '.tar.gz', binaryName: 'nucel' },
+    win32: { ext: '.zip', binaryName: 'nucel.exe' }
+  }
 
   return {
     platform,
     arch,
-    isWindows: platform === 'win32',
-    isMacOS: platform === 'darwin',
-    isLinux: platform === 'linux'
+    ...platformMap[platform]
   }
 }
 
@@ -66,7 +72,7 @@ const restoreFromCache = async (cacheKey: string): Promise<string | null> => {
     const cacheHit = await cache.restoreCache([cachePath], cacheKey)
 
     if (cacheHit) {
-      const nucelPath = await findNucelExecutable(cachePath)
+      const nucelPath = await findBinaryInCache(cachePath)
       if (nucelPath && await verifyInstallation(nucelPath)) {
         return nucelPath
       }
@@ -79,88 +85,137 @@ const restoreFromCache = async (cacheKey: string): Promise<string | null> => {
 }
 
 const installNucelCLI = async (inputs: Inputs, platform: PlatformInfo): Promise<string> => {
-  const packageName = inputs.version === 'latest'
-    ? '@nucel.cloud/cli'
-    : `@nucel.cloud/cli@${inputs.version}`
-
-  core.info(`Installing ${packageName}...`)
+  core.info(`Installing Nucel CLI ${inputs.version}...`)
 
   try {
-    const npmConfig = []
-    if (inputs.token) {
-      npmConfig.push('--registry', 'https://registry.npmjs.org/')
-      process.env.NPM_TOKEN = inputs.token
+    // Download binary directly from GitHub releases
+    const downloadUrl = getDownloadUrl(inputs.version, platform)
+    core.info(`Downloading from: ${downloadUrl}`)
+
+    const downloadPath = await tc.downloadTool(downloadUrl)
+    core.info(`Downloaded to: ${downloadPath}`)
+
+    // Extract the binary
+    let extractedPath: string
+    if (platform.ext === '.zip') {
+      extractedPath = await tc.extractZip(downloadPath)
+    } else {
+      extractedPath = await tc.extractTar(downloadPath, undefined, 'xz')
+    }
+    core.info(`Extracted to: ${extractedPath}`)
+
+    // Find the binary in the extracted directory
+    const binaryPath = await findBinaryInDir(extractedPath, platform.binaryName)
+    if (!binaryPath) {
+      throw new Error(`Nucel CLI binary not found in extracted directory: ${extractedPath}`)
     }
 
-    const installArgs = ['install', '-g', packageName, ...npmConfig]
-
-    const exitCode = await exec.exec('npm', installArgs, {
-      ignoreReturnCode: true,
-      listeners: {
-        stdout: (data: Buffer) => core.info(data.toString().trim()),
-        stderr: (data: Buffer) => core.warning(data.toString().trim())
-      }
-    })
-
-    if (exitCode !== 0) {
-      throw new Error(`npm install failed with exit code ${exitCode}`)
+    // Make executable on Unix systems
+    if (platform.platform !== 'win32') {
+      await exec.exec('chmod', ['+x', binaryPath])
+      core.info(`Made binary executable: ${binaryPath}`)
     }
 
-    const nucelPath = await findNucelExecutable()
-    if (!nucelPath) {
-      throw new Error('Nucel CLI executable not found after installation')
-    }
-
-    if (!(await verifyInstallation(nucelPath))) {
+    // Verify the installation
+    if (!(await verifyInstallation(binaryPath))) {
       throw new Error('Nucel CLI installation verification failed')
     }
 
-    core.info(`Nucel CLI installed successfully at ${nucelPath}`)
-    return nucelPath
+    // Add the binary directory to PATH
+    const binaryDir = path.dirname(binaryPath)
+    addPath(binaryDir)
+    core.info(`Added to PATH: ${binaryDir}`)
+
+    core.info(`Nucel CLI installed successfully at ${binaryPath}`)
+    return binaryPath
 
   } catch (error) {
     throw new Error(`Failed to install Nucel CLI: ${error}`)
   }
 }
 
-const findNucelExecutable = async (searchPath?: string): Promise<string | null> => {
-  const platform = getPlatformInfo()
-  const possibleNames = platform.isWindows ? ['nucel.exe', 'nucel.cmd'] : ['nucel']
-  const searchPaths = searchPath ? [searchPath] : getGlobalNpmPaths(platform)
+const getDownloadUrl = (version: string, platform: PlatformInfo): string => {
+  const baseUrl = 'https://github.com/nucel-cloud/nucel/releases/download'
+  const versionTag = version === 'latest' ? 'latest' : `cli-v${version}`
+  const fileName = `nucel-cli-${platform.platform}-${platform.arch}${platform.ext}`
 
-  for (const basePath of searchPaths) {
-    for (const name of possibleNames) {
-      const fullPath = path.join(basePath, name)
-      try {
-        await fs.access(fullPath)
-        return fullPath
-      } catch {
-        // Continue searching
+  return `${baseUrl}/${versionTag}/${fileName}`
+}
+
+const findBinaryInDir = async (dirPath: string, binaryName: string): Promise<string | null> => {
+  try {
+    // First, try the root directory
+    const rootBinary = path.join(dirPath, binaryName)
+    if (await fileExists(rootBinary)) {
+      return rootBinary
+    }
+
+    // Then try common subdirectories
+    const commonDirs = ['bin', 'cli', 'nucel', 'nucel-cli']
+    for (const subDir of commonDirs) {
+      const subBinary = path.join(dirPath, subDir, binaryName)
+      if (await fileExists(subBinary)) {
+        return subBinary
       }
     }
+
+    // Recursively search for the binary
+    const binaryPath = await findBinaryRecursive(dirPath, binaryName)
+    return binaryPath
+
+  } catch (error) {
+    core.warning(`Error finding binary in directory: ${error}`)
+    return null
+  }
+}
+
+const findBinaryRecursive = async (dirPath: string, binaryName: string): Promise<string | null> => {
+  try {
+    const entries = await fs.readdir(dirPath, { withFileTypes: true })
+
+    for (const entry of entries) {
+      const fullPath = path.join(dirPath, entry.name)
+
+      if (entry.isFile() && entry.name === binaryName) {
+        return fullPath
+      }
+
+      if (entry.isDirectory()) {
+        const found = await findBinaryRecursive(fullPath, binaryName)
+        if (found) {
+          return found
+        }
+      }
+    }
+  } catch (error) {
+    // Ignore errors and continue searching
   }
 
   return null
 }
 
-const getGlobalNpmPaths = (platform: PlatformInfo): string[] => {
-  const paths: string[] = []
+const findBinaryInCache = async (cachePath: string): Promise<string | null> => {
+  try {
+    const platform = getPlatformInfo()
+    const cachedBinary = path.join(cachePath, platform.binaryName)
 
-  if (platform.isWindows) {
-    const appData = process.env.APPDATA
-    const programFiles = process.env.PROGRAMFILES
-    if (appData) paths.push(path.join(appData, 'npm'))
-    if (programFiles) paths.push(path.join(programFiles, 'nodejs'))
-  } else {
-    paths.push('/usr/local/bin', '/usr/bin', '/opt/homebrew/bin')
-    const home = process.env.HOME
-    if (home) {
-      paths.push(path.join(home, '.npm-global', 'bin'))
-      paths.push(path.join(home, 'node_modules', '.bin'))
+    if (await fileExists(cachedBinary)) {
+      return cachedBinary
     }
+  } catch (error) {
+    core.warning(`Error finding binary in cache: ${error}`)
   }
 
-  return paths
+  return null
+}
+
+const fileExists = async (filePath: string): Promise<boolean> => {
+  try {
+    await fs.access(filePath, fs.constants.F_OK | fs.constants.X_OK)
+    return true
+  } catch {
+    return false
+  }
 }
 
 const verifyInstallation = async (nucelPath: string): Promise<boolean> => {
