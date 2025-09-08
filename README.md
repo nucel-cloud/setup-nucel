@@ -1,96 +1,237 @@
-# typescript-action [![ts](https://github.com/int128/typescript-action/actions/workflows/ts.yaml/badge.svg)](https://github.com/int128/typescript-action/actions/workflows/ts.yaml)
+# setup-nucel
 
-This is a template of TypeScript action.
-Inspired from https://github.com/actions/typescript-action.
+[![CI](https://github.com/your-org/setup-nucel/actions/workflows/ci.yml/badge.svg)](https://github.com/your-org/setup-nucel/actions/workflows/ci.yml)
+[![Release](https://github.com/your-org/setup-nucel/actions/workflows/release.yml/badge.svg)](https://github.com/your-org/setup-nucel/actions/workflows/release.yml)
+
+A GitHub Action to set up the Nucel CLI for use in workflows. This action installs the Nucel CLI and makes it available for subsequent steps.
 
 ## Features
 
-- Ready to develop with the minimum configs
-  - Prettier
-  - ESLint
-  - tsconfig
-  - Jest
-- Automated continuous release
-- Keep consistency of generated files
-- Shipped with Renovate config
+- 🚀 **Fast Installation**: Uses npm for quick global installation
+- 💾 **Smart Caching**: Caches installations to speed up subsequent runs
+- 🖥️ **Cross-Platform**: Supports Windows, macOS, and Linux
+- 🔐 **Secure**: Uses official Nucel CLI package with optional authentication
+- 🧹 **Clean**: Automatic cleanup of temporary files
+- 📦 **Lightweight**: Minimal dependencies and fast execution
 
-## Getting Started
+## Usage
 
-Click `Use this template` to create a repository.
-
-An initial release `v0.0.0` is automatically created by GitHub Actions.
-You can see the generated files in `dist` directory on the tag.
-
-Then checkout your repository and test it. Node.js is required.
-
-```console
-$ git clone https://github.com/your/repo.git
-
-$ pnpm i
-$ pnpm test
-```
-
-Create a pull request for a change.
-
-```console
-$ git checkout -b feature
-$ git commit -m 'Add feature'
-$ gh pr create -fd
-```
-
-Once you merge a pull request, a new minor release (such as `v0.1.0`) is created.
-
-### Stable release
-
-When you want to create a stable release, change the major version in [release workflow](.github/workflows/release.yaml).
+### Basic Usage
 
 ```yaml
-- uses: int128/release-typescript-action@v1
+- name: Set up Nucel CLI
+  uses: your-org/setup-nucel@v1
   with:
-    major-version: 1
+    version: 'latest'
 ```
 
-Then a new stable release `v1.0.0` is created.
-
-## Specification
-
-To run this action, create a workflow as follows:
+### Advanced Usage
 
 ```yaml
+- name: Set up Nucel CLI with specific version
+  uses: your-org/setup-nucel@v1
+  with:
+    version: '1.2.3'
+    token: ${{ secrets.NUCEL_TOKEN }}
+```
+
+## Inputs
+
+| Name | Required | Default | Description |
+|------|----------|---------|-------------|
+| `version` | No | `'latest'` | Version of Nucel CLI to install (e.g., `'1.0.0'`, `'latest'`) |
+| `token` | No | `''` | Authentication token for Nucel CLI (if required) |
+| `install-path` | No | `''` | Custom installation path (optional, uses npm global by default) |
+
+## Outputs
+
+| Name | Description |
+|------|-------------|
+| `cli-version` | Installed Nucel CLI version |
+| `cli-path` | Path to the installed Nucel CLI executable |
+
+## Examples
+
+### CI/CD Pipeline
+
+```yaml
+name: CI
+on: [push, pull_request]
+
 jobs:
-  build:
+  test:
     runs-on: ubuntu-latest
     steps:
-      - uses: int128/typescript-action@v1
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
         with:
-          name: hello
+          node-version: '20'
+
+      - name: Set up Nucel CLI
+        uses: your-org/setup-nucel@v1
+        with:
+          version: 'latest'
+
+      - name: Run Nucel commands
+        run: |
+          nucel --version
+          nucel deploy --config ./nucel.config.json
 ```
 
-### Inputs
+### Multi-Platform Build
 
-| Name   | Default    | Description   |
-| ------ | ---------- | ------------- |
-| `name` | (required) | example input |
+```yaml
+name: Build
+on: [push]
 
-### Outputs
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
 
-| Name      | Description    |
-| --------- | -------------- |
-| `example` | example output |
+      - name: Set up Nucel CLI
+        uses: your-org/setup-nucel@v1
+        with:
+          version: '1.2.3'
+
+      - name: Build with Nucel
+        run: nucel build
+```
+
+### With Authentication
+
+```yaml
+name: Deploy
+on: [push]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Nucel CLI
+        uses: your-org/setup-nucel@v1
+        with:
+          version: 'latest'
+          token: ${{ secrets.NUCEL_AUTH_TOKEN }}
+
+      - name: Deploy to production
+        run: nucel deploy --env production
+```
+
+### Using Outputs
+
+```yaml
+name: Version Check
+on: [push]
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Nucel CLI
+        id: setup-nucel
+        uses: your-org/setup-nucel@v1
+        with:
+          version: 'latest'
+
+      - name: Display version info
+        run: |
+          echo "Nucel CLI version: ${{ steps.setup-nucel.outputs.cli-version }}"
+          echo "Nucel CLI path: ${{ steps.setup-nucel.outputs.cli-path }}"
+```
+
+## Platform Support
+
+This action supports all GitHub-hosted runners:
+
+- **Ubuntu**: `ubuntu-latest`, `ubuntu-22.04`, `ubuntu-20.04`
+- **Windows**: `windows-latest`, `windows-2022`, `windows-2019`
+- **macOS**: `macos-latest`, `macos-13`, `macos-12`
+
+## Caching
+
+The action automatically caches Nucel CLI installations based on:
+- CLI version
+- Operating system
+- Architecture
+
+This significantly speeds up subsequent workflow runs with the same configuration.
+
+## Error Handling
+
+The action provides clear error messages for common issues:
+
+- **Installation failures**: Network issues, invalid versions, permission problems
+- **Authentication errors**: Invalid or missing tokens
+- **Platform compatibility**: Unsupported operating systems or architectures
+- **Cache issues**: Corrupted cache, permission problems
+
+## Security
+
+- Uses the official `@nucel.cloud/cli` npm package
+- Supports authentication via tokens for private registries
+- No sensitive data is logged or exposed
+- Follows GitHub Actions security best practices
 
 ## Development
 
-### Release workflow
+### Prerequisites
 
-When a pull request is merged into main branch, a new minor release is created by GitHub Actions.
-See https://github.com/int128/release-typescript-action for details.
+- Node.js 20.x
+- pnpm
 
-### Keep consistency of generated files
+### Setup
 
-If a pull request needs to be fixed by Prettier, an additional commit to fix it will be added by GitHub Actions.
-See https://github.com/int128/update-generated-files-action for details.
+```bash
+git clone https://github.com/your-org/setup-nucel.git
+cd setup-nucel
+pnpm install
+```
 
-### Dependency update
+### Testing
 
-You can enable Renovate to update the dependencies.
-This repository is shipped with the config https://github.com/int128/typescript-action-renovate-config.
+```bash
+pnpm test
+```
+
+### Building
+
+```bash
+pnpm build
+```
+
+### Release Process
+
+1. Create a feature branch
+2. Make changes and add tests
+3. Create a pull request
+4. Merge to main (triggers automated release)
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests for new functionality
+5. Ensure all tests pass
+6. Create a pull request
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Support
+
+- 📖 [Documentation](https://docs.nucel.cloud)
+- 🐛 [Issue Tracker](https://github.com/your-org/setup-nucel/issues)
+- 💬 [Discussions](https://github.com/your-org/setup-nucel/discussions)
