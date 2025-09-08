@@ -143,28 +143,42 @@ const getDownloadUrl = (version: string, platform: PlatformInfo): string => {
 }
 
 const findBinaryInDir = async (dirPath: string, binaryName: string): Promise<string | null> => {
+  core.info(`Searching for '${binaryName}' in extracted directory: ${dirPath}`)
+  
   try {
-    // First, try the root directory
-    const rootBinary = path.join(dirPath, binaryName)
-    if (await fileExists(rootBinary)) {
-      return rootBinary
+    // List all contents first for debugging
+    const allContents = await fs.readdir(dirPath, { recursive: true })
+    core.info(`Found ${allContents.length} items in extracted directory`)
+    core.info(`Contents: ${allContents.slice(0, 20).join(', ')}${allContents.length > 20 ? '...' : ''}`)
+    
+    // Simple search - just look for 'nucel' (the actual command name)
+    const targetName = 'nucel'
+    
+    // Check root directory first
+    const rootPath = path.join(dirPath, targetName)
+    if (await fileExists(rootPath)) {
+      core.info(`Found binary at: ${rootPath}`)
+      return rootPath
     }
-
-    // Then try common subdirectories
-    const commonDirs = ['bin', 'cli', 'nucel', 'nucel-cli']
-    for (const subDir of commonDirs) {
-      const subBinary = path.join(dirPath, subDir, binaryName)
-      if (await fileExists(subBinary)) {
-        return subBinary
+    
+    // Check all files recursively for exact match
+    for (const item of allContents) {
+      const fullPath = path.join(dirPath, item)
+      const basename = path.basename(item)
+      
+      // Check if this is the nucel binary
+      if (basename === targetName || basename === 'nucel.exe') {
+        if (await fileExists(fullPath)) {
+          core.info(`Found binary at: ${fullPath}`)
+          return fullPath
+        }
       }
     }
-
-    // Recursively search for the binary
-    const binaryPath = await findBinaryRecursive(dirPath, binaryName)
-    return binaryPath
-
+    
+    core.error(`Binary '${targetName}' not found in any of the extracted files`)
+    return null
   } catch (error) {
-    core.warning(`Error finding binary in directory: ${error}`)
+    core.error(`Error searching for binary: ${error}`)
     return null
   }
 }

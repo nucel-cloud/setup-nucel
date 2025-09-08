@@ -34479,34 +34479,45 @@ const getDownloadUrl = (version, platform) => {
     return `${baseUrl}/${versionTag}/${fileName}`;
 };
 const findBinaryInDir = async (dirPath, binaryName) => {
+    _actions_core__WEBPACK_IMPORTED_MODULE_0__.info(`Searching for '${binaryName}' in extracted directory: ${dirPath}`);
     try {
-        // First, try the root directory
-        const rootBinary = path__WEBPACK_IMPORTED_MODULE_5__.join(dirPath, binaryName);
-        if (await fileExists(rootBinary)) {
-            return rootBinary;
+        // List all contents first for debugging
+        const allContents = await fs_promises__WEBPACK_IMPORTED_MODULE_4__.readdir(dirPath, { recursive: true });
+        _actions_core__WEBPACK_IMPORTED_MODULE_0__.info(`Found ${allContents.length} items in extracted directory`);
+        _actions_core__WEBPACK_IMPORTED_MODULE_0__.info(`Contents: ${allContents.slice(0, 20).join(', ')}${allContents.length > 20 ? '...' : ''}`);
+        // Simple search - just look for 'nucel' (the actual command name)
+        const targetName = 'nucel';
+        // Check root directory first
+        const rootPath = path__WEBPACK_IMPORTED_MODULE_5__.join(dirPath, targetName);
+        if (await fileExists(rootPath)) {
+            _actions_core__WEBPACK_IMPORTED_MODULE_0__.info(`Found binary at: ${rootPath}`);
+            return rootPath;
         }
-        // Then try common subdirectories
-        const commonDirs = ['bin', 'cli', 'nucel', 'nucel-cli'];
-        for (const subDir of commonDirs) {
-            const subBinary = path__WEBPACK_IMPORTED_MODULE_5__.join(dirPath, subDir, binaryName);
-            if (await fileExists(subBinary)) {
-                return subBinary;
+        // Check all files recursively for exact match
+        for (const item of allContents) {
+            const fullPath = path__WEBPACK_IMPORTED_MODULE_5__.join(dirPath, item);
+            const basename = path__WEBPACK_IMPORTED_MODULE_5__.basename(item);
+            // Check if this is the nucel binary
+            if (basename === targetName || basename === 'nucel.exe') {
+                if (await fileExists(fullPath)) {
+                    _actions_core__WEBPACK_IMPORTED_MODULE_0__.info(`Found binary at: ${fullPath}`);
+                    return fullPath;
+                }
             }
         }
-        // Recursively search for the binary
-        const binaryPath = await findBinaryRecursive(dirPath, binaryName);
-        return binaryPath;
+        _actions_core__WEBPACK_IMPORTED_MODULE_0__.error(`Binary '${targetName}' not found in any of the extracted files`);
+        return null;
     }
     catch (error) {
-        _actions_core__WEBPACK_IMPORTED_MODULE_0__.warning(`Error finding binary in directory: ${error}`);
+        _actions_core__WEBPACK_IMPORTED_MODULE_0__.error(`Error searching for binary: ${error}`);
         return null;
     }
 };
 const findBinaryRecursive = async (dirPath, binaryName) => {
     try {
-        const entries = await fs_promises__WEBPACK_IMPORTED_MODULE_4__.readdir(dirPath, { withFileTypes: true });
+        const entries = await fs.readdir(dirPath, { withFileTypes: true });
         for (const entry of entries) {
-            const fullPath = path__WEBPACK_IMPORTED_MODULE_5__.join(dirPath, entry.name);
+            const fullPath = path.join(dirPath, entry.name);
             if (entry.isFile() && entry.name === binaryName) {
                 return fullPath;
             }
