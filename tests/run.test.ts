@@ -138,7 +138,7 @@ describe('Nucel CLI Setup Action', () => {
       vi.mocked(fs.mkdir).mockResolvedValue(undefined)
       vi.mocked(fs.copyFile).mockResolvedValue(undefined)
 
-      await run(inputs, mockOctokit as any, mockContext as any)
+      await run(inputs, mockContext as any)
 
       expect(exec.exec).toHaveBeenCalledWith('npm', ['install', '-g', '@nucel.cloud/cli@1.2.3'], expect.any(Object))
     })
@@ -151,7 +151,7 @@ describe('Nucel CLI Setup Action', () => {
       vi.mocked(fs.access).mockResolvedValue()
       vi.mocked(exec.exec).mockResolvedValue(0) // For verification
 
-      await run(inputs, mockOctokit as any, mockContext as any)
+      await run(inputs, mockContext as any)
 
       expect(cache.restoreCache).toHaveBeenCalled()
       expect(exec.exec).not.toHaveBeenCalledWith('npm', expect.arrayContaining(['install']), expect.any(Object))
@@ -229,7 +229,7 @@ describe('Nucel CLI Setup Action', () => {
       vi.mocked(fs.mkdir).mockResolvedValue(undefined)
       vi.mocked(fs.copyFile).mockResolvedValue(undefined)
 
-      await run(inputs, mockOctokit as any, mockContext as any)
+      await run(inputs, mockContext as any)
 
       expect(core.info).toHaveBeenCalledWith(expect.stringContaining('darwin'))
     })

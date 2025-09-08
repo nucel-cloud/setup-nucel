@@ -1,10 +1,14 @@
-import assert from 'assert'
+import { strict as assert } from 'assert'
 import * as fs from 'fs/promises'
-import { Octokit } from '@octokit/action'
 import { WebhookEvent } from '@octokit/webhooks-types'
-import { retry } from '@octokit/plugin-retry'
 
-export const getOctokit = () => new (Octokit.plugin(retry))()
+export const getOctokit = () => ({
+  rest: {
+    repos: {
+      listPullRequestsAssociatedWithCommit: async () => ({ data: [] })
+    }
+  }
+})
 
 export type Context = {
   repo: {
@@ -16,7 +20,6 @@ export type Context = {
 }
 
 export const getContext = async (): Promise<Context> => {
-  // https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/store-information-in-variables#default-environment-variables
   return {
     repo: getRepo(),
     sha: getEnv('GITHUB_SHA'),

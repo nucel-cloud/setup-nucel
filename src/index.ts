@@ -1,6 +1,6 @@
 import * as core from '@actions/core'
 import { run, cleanup } from './run.js'
-import { getContext, getOctokit } from './github.js'
+import { getContext } from './github.js'
 
 const isPost = !!process.env.STATE_isPost
 
@@ -16,7 +16,6 @@ try {
         token: core.getInput('token', { required: false }),
         installPath: core.getInput('install-path', { required: false }),
       },
-      getOctokit(),
       await getContext(),
     )
 

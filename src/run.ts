@@ -4,7 +4,6 @@ import * as cache from '@actions/cache'
 import * as fs from 'fs/promises'
 import * as path from 'path'
 import { Context } from './github.js'
-import { Octokit } from '@octokit/action'
 
 type Inputs = {
   version: string
@@ -20,8 +19,7 @@ type PlatformInfo = {
   isLinux: boolean
 }
 
-export const run = async (inputs: Inputs, octokit: Octokit, context: Context): Promise<void> => {
-  // Validate inputs
+export const run = async (inputs: Inputs, context: Context): Promise<void> => {
   if (!inputs.version || typeof inputs.version !== 'string') {
     throw new Error('version input is required and must be a string')
   }
@@ -35,7 +33,6 @@ export const run = async (inputs: Inputs, octokit: Octokit, context: Context): P
 
   core.info(`Setting up Nucel CLI ${inputs.version} on ${platform.platform}`)
 
-  // Check cache first
   const cacheHit = await restoreFromCache(cacheKey)
   if (cacheHit) {
     core.info('Nucel CLI restored from cache')
@@ -43,13 +40,10 @@ export const run = async (inputs: Inputs, octokit: Octokit, context: Context): P
     return
   }
 
-  // Install Nucel CLI
   const installPath = await installNucelCLI(inputs, platform)
 
-  // Cache the installation
   await saveToCache(cacheKey, installPath)
 
-  // Set outputs
   await setOutputs(installPath)
 }
 
@@ -72,7 +66,6 @@ const restoreFromCache = async (cacheKey: string): Promise<string | null> => {
     const cacheHit = await cache.restoreCache([cachePath], cacheKey)
 
     if (cacheHit) {
-      // Verify the cached installation
       const nucelPath = await findNucelExecutable(cachePath)
       if (nucelPath && await verifyInstallation(nucelPath)) {
         return nucelPath
@@ -93,15 +86,12 @@ const installNucelCLI = async (inputs: Inputs, platform: PlatformInfo): Promise<
   core.info(`Installing ${packageName}...`)
 
   try {
-    // Set up npm environment
     const npmConfig = []
     if (inputs.token) {
       npmConfig.push('--registry', 'https://registry.npmjs.org/')
-      // Set auth token if provided
       process.env.NPM_TOKEN = inputs.token
     }
 
-    // Install globally
     const installArgs = ['install', '-g', packageName, ...npmConfig]
 
     const exitCode = await exec.exec('npm', installArgs, {
@@ -116,13 +106,11 @@ const installNucelCLI = async (inputs: Inputs, platform: PlatformInfo): Promise<
       throw new Error(`npm install failed with exit code ${exitCode}`)
     }
 
-    // Find the installed executable
     const nucelPath = await findNucelExecutable()
     if (!nucelPath) {
       throw new Error('Nucel CLI executable not found after installation')
     }
 
-    // Verify installation
     if (!(await verifyInstallation(nucelPath))) {
       throw new Error('Nucel CLI installation verification failed')
     }
@@ -159,15 +147,12 @@ const getGlobalNpmPaths = (platform: PlatformInfo): string[] => {
   const paths: string[] = []
 
   if (platform.isWindows) {
-    // Windows npm global paths
     const appData = process.env.APPDATA
     const programFiles = process.env.PROGRAMFILES
     if (appData) paths.push(path.join(appData, 'npm'))
     if (programFiles) paths.push(path.join(programFiles, 'nodejs'))
   } else {
-    // Unix-like systems
     paths.push('/usr/local/bin', '/usr/bin', '/opt/homebrew/bin')
-    // Add user-specific npm path
     const home = process.env.HOME
     if (home) {
       paths.push(path.join(home, '.npm-global', 'bin'))
@@ -198,7 +183,6 @@ const saveToCache = async (cacheKey: string, nucelPath: string): Promise<void> =
     const cachePath = path.join(process.cwd(), 'nucel-cache')
     await fs.mkdir(cachePath, { recursive: true })
 
-    // Copy the nucel executable to cache directory
     const cachedNucelPath = path.join(cachePath, path.basename(nucelPath))
     await fs.copyFile(nucelPath, cachedNucelPath)
 
@@ -210,7 +194,6 @@ const saveToCache = async (cacheKey: string, nucelPath: string): Promise<void> =
 }
 
 const setOutputs = async (nucelPath: string): Promise<void> => {
-  // Get version from the installed CLI
   let version = 'unknown'
   try {
     const output = await exec.getExecOutput(nucelPath, ['--version'])
@@ -233,7 +216,6 @@ export const cleanup = async (): Promise<void> => {
   core.info('Running post-step cleanup...')
 
   try {
-    // Clean up temporary cache directory
     const cachePath = path.join(process.cwd(), 'nucel-cache')
     await fs.rm(cachePath, { recursive: true, force: true })
     core.info('Temporary files cleaned up')
