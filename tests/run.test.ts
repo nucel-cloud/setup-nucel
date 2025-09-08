@@ -116,7 +116,7 @@ describe('Nucel CLI Setup Action', () => {
 
       await run(inputs, mockContext)
 
-      expect(tc.downloadTool).toHaveBeenCalledWith('https://github.com/nucel-cloud/nucel/releases/download/latest/nucel-cli-linux-x64.tar.gz')
+      expect(tc.downloadTool).toHaveBeenCalledWith('https://github.com/nucel-cloud/nucel/releases/download/cli-v0.1.9/nucel-cli-linux-x64.tar.gz')
       expect(tc.extractTar).toHaveBeenCalledWith('/tmp/downloaded-file.tar.gz', undefined, 'xz')
       expect(core.addPath).toHaveBeenCalled()
       expect(core.setOutput).toHaveBeenCalledWith('cli-version', '1.0.0')
@@ -208,7 +208,7 @@ describe('Nucel CLI Setup Action', () => {
 
       await run(inputs, mockContext)
 
-      expect(tc.downloadTool).toHaveBeenCalledWith('https://github.com/nucel-cloud/nucel/releases/download/latest/nucel-cli-win32-x64.zip')
+      expect(tc.downloadTool).toHaveBeenCalledWith('https://github.com/nucel-cloud/nucel/releases/download/cli-v0.1.9/nucel-cli-win32-x64.zip')
       expect(tc.extractZip).toHaveBeenCalledWith('/tmp/downloaded-file.zip')
       expect(core.info).toHaveBeenCalledWith(expect.stringContaining('win32'))
     })
@@ -239,7 +239,7 @@ describe('Nucel CLI Setup Action', () => {
 
       await run(inputs, mockContext)
 
-      expect(tc.downloadTool).toHaveBeenCalledWith('https://github.com/nucel-cloud/nucel/releases/download/latest/nucel-cli-darwin-x64.tar.gz')
+      expect(tc.downloadTool).toHaveBeenCalledWith('https://github.com/nucel-cloud/nucel/releases/download/cli-v0.1.9/nucel-cli-darwin-x64.tar.gz')
       expect(core.info).toHaveBeenCalledWith(expect.stringContaining('darwin'))
     })
 
