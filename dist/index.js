@@ -34452,11 +34452,6 @@ const installNucelCLI = async (inputs, platform) => {
         if (!binaryPath) {
             throw new Error(`Nucel CLI binary not found in extracted directory: ${extractedPath}`);
         }
-        // Make executable on Unix systems
-        if (platform.platform !== 'win32') {
-            await _actions_exec__WEBPACK_IMPORTED_MODULE_1__.exec('chmod', ['+x', binaryPath]);
-            _actions_core__WEBPACK_IMPORTED_MODULE_0__.info(`Made binary executable: ${binaryPath}`);
-        }
         // Verify the installation
         if (!(await verifyInstallation(binaryPath))) {
             throw new Error('Nucel CLI installation verification failed');
@@ -34479,33 +34474,42 @@ const getDownloadUrl = (version, platform) => {
     return `${baseUrl}/${versionTag}/${fileName}`;
 };
 const findBinaryInDir = async (dirPath, binaryName) => {
-    _actions_core__WEBPACK_IMPORTED_MODULE_0__.info(`Searching for '${binaryName}' in extracted directory: ${dirPath}`);
+    _actions_core__WEBPACK_IMPORTED_MODULE_0__.info(`Searching for binary in extracted directory: ${dirPath}`);
     try {
         // List all contents first for debugging
         const allContents = await fs_promises__WEBPACK_IMPORTED_MODULE_4__.readdir(dirPath, { recursive: true });
         _actions_core__WEBPACK_IMPORTED_MODULE_0__.info(`Found ${allContents.length} items in extracted directory`);
         _actions_core__WEBPACK_IMPORTED_MODULE_0__.info(`Contents: ${allContents.slice(0, 20).join(', ')}${allContents.length > 20 ? '...' : ''}`);
-        // Simple search - just look for 'nucel' (the actual command name)
-        const targetName = 'nucel';
-        // Check root directory first
-        const rootPath = path__WEBPACK_IMPORTED_MODULE_5__.join(dirPath, targetName);
-        if (await fileExists(rootPath)) {
-            _actions_core__WEBPACK_IMPORTED_MODULE_0__.info(`Found binary at: ${rootPath}`);
-            return rootPath;
+        // The extracted file is named like 'nucel-cli-linux-x64' but we want to use it as 'nucel'
+        // Look for any file that starts with 'nucel-cli-' and ends with the platform/arch
+        const platform = getPlatformInfo();
+        const expectedPrefix = `nucel-cli-${platform.platform}-${platform.arch}`;
+        // Check root directory for the expected filename
+        const expectedPath = path__WEBPACK_IMPORTED_MODULE_5__.join(dirPath, expectedPrefix);
+        if (await fileExists(expectedPath)) {
+            _actions_core__WEBPACK_IMPORTED_MODULE_0__.info(`Found expected binary at: ${expectedPath}`);
+            // Make it executable and return the path
+            if (platform.platform !== 'win32') {
+                await _actions_exec__WEBPACK_IMPORTED_MODULE_1__.exec('chmod', ['+x', expectedPath]);
+                _actions_core__WEBPACK_IMPORTED_MODULE_0__.info(`Made binary executable: ${expectedPath}`);
+            }
+            return expectedPath;
         }
-        // Check all files recursively for exact match
+        // If not found with expected name, look for any file that contains 'nucel'
         for (const item of allContents) {
             const fullPath = path__WEBPACK_IMPORTED_MODULE_5__.join(dirPath, item);
             const basename = path__WEBPACK_IMPORTED_MODULE_5__.basename(item);
-            // Check if this is the nucel binary
-            if (basename === targetName || basename === 'nucel.exe') {
-                if (await fileExists(fullPath)) {
-                    _actions_core__WEBPACK_IMPORTED_MODULE_0__.info(`Found binary at: ${fullPath}`);
-                    return fullPath;
+            if (basename.includes('nucel') && await fileExists(fullPath)) {
+                _actions_core__WEBPACK_IMPORTED_MODULE_0__.info(`Found nucel-related file at: ${fullPath}`);
+                // Make it executable and return the path
+                if (platform.platform !== 'win32') {
+                    await _actions_exec__WEBPACK_IMPORTED_MODULE_1__.exec('chmod', ['+x', fullPath]);
+                    _actions_core__WEBPACK_IMPORTED_MODULE_0__.info(`Made binary executable: ${fullPath}`);
                 }
+                return fullPath;
             }
         }
-        _actions_core__WEBPACK_IMPORTED_MODULE_0__.error(`Binary '${targetName}' not found in any of the extracted files`);
+        _actions_core__WEBPACK_IMPORTED_MODULE_0__.error(`No nucel-related binary found in extracted files`);
         return null;
     }
     catch (error) {

@@ -110,12 +110,6 @@ const installNucelCLI = async (inputs: Inputs, platform: PlatformInfo): Promise<
       throw new Error(`Nucel CLI binary not found in extracted directory: ${extractedPath}`)
     }
 
-    // Make executable on Unix systems
-    if (platform.platform !== 'win32') {
-      await exec.exec('chmod', ['+x', binaryPath])
-      core.info(`Made binary executable: ${binaryPath}`)
-    }
-
     // Verify the installation
     if (!(await verifyInstallation(binaryPath))) {
       throw new Error('Nucel CLI installation verification failed')
@@ -143,39 +137,52 @@ const getDownloadUrl = (version: string, platform: PlatformInfo): string => {
 }
 
 const findBinaryInDir = async (dirPath: string, binaryName: string): Promise<string | null> => {
-  core.info(`Searching for '${binaryName}' in extracted directory: ${dirPath}`)
-  
+  core.info(`Searching for binary in extracted directory: ${dirPath}`)
+
   try {
     // List all contents first for debugging
     const allContents = await fs.readdir(dirPath, { recursive: true })
     core.info(`Found ${allContents.length} items in extracted directory`)
     core.info(`Contents: ${allContents.slice(0, 20).join(', ')}${allContents.length > 20 ? '...' : ''}`)
-    
-    // Simple search - just look for 'nucel' (the actual command name)
-    const targetName = 'nucel'
-    
-    // Check root directory first
-    const rootPath = path.join(dirPath, targetName)
-    if (await fileExists(rootPath)) {
-      core.info(`Found binary at: ${rootPath}`)
-      return rootPath
+
+    // The extracted file is named like 'nucel-cli-linux-x64' but we want to use it as 'nucel'
+    // Look for any file that starts with 'nucel-cli-' and ends with the platform/arch
+    const platform = getPlatformInfo()
+    const expectedPrefix = `nucel-cli-${platform.platform}-${platform.arch}`
+
+    // Check root directory for the expected filename
+    const expectedPath = path.join(dirPath, expectedPrefix)
+    if (await fileExists(expectedPath)) {
+      core.info(`Found expected binary at: ${expectedPath}`)
+
+      // Make it executable and return the path
+      if (platform.platform !== 'win32') {
+        await exec.exec('chmod', ['+x', expectedPath])
+        core.info(`Made binary executable: ${expectedPath}`)
+      }
+
+      return expectedPath
     }
-    
-    // Check all files recursively for exact match
+
+    // If not found with expected name, look for any file that contains 'nucel'
     for (const item of allContents) {
       const fullPath = path.join(dirPath, item)
       const basename = path.basename(item)
-      
-      // Check if this is the nucel binary
-      if (basename === targetName || basename === 'nucel.exe') {
-        if (await fileExists(fullPath)) {
-          core.info(`Found binary at: ${fullPath}`)
-          return fullPath
+
+      if (basename.includes('nucel') && await fileExists(fullPath)) {
+        core.info(`Found nucel-related file at: ${fullPath}`)
+
+        // Make it executable and return the path
+        if (platform.platform !== 'win32') {
+          await exec.exec('chmod', ['+x', fullPath])
+          core.info(`Made binary executable: ${fullPath}`)
         }
+
+        return fullPath
       }
     }
-    
-    core.error(`Binary '${targetName}' not found in any of the extracted files`)
+
+    core.error(`No nucel-related binary found in extracted files`)
     return null
   } catch (error) {
     core.error(`Error searching for binary: ${error}`)
